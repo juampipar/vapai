@@ -35,7 +35,7 @@ as $$
         'marca', a.data->>'marca', 'lema', a.data->>'lema', 'whatsapp', a.data->>'whatsapp',
         'instagram', a.data->>'instagram', 'reglas', a.data->>'reglas',
         'senaPct', coalesce((a.data->>'senaPct')::numeric, 30), 'diasSaldo', coalesce((a.data->>'diasSaldo')::numeric, 7),
-        'comision', coalesce((a.data->>'comision')::numeric, 0), 'descuentoAmigo', coalesce((a.data->>'descuentoAmigo')::numeric, 0))
+        'comision', coalesce((a.data->>'comision')::numeric, 0), 'mpActivo', coalesce((a.data->>'mpActivo')::boolean, false), 'descuentoAmigo', coalesce((a.data->>'descuentoAmigo')::numeric, 0))
       from ajustes a where a.id = 'ajustes'
     ),
     'experiencias', coalesce((

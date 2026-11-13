@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Copy, MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { Copy, CreditCard, MessageCircle, Plus, Trash2 } from 'lucide-react'
+import { crearLinkPago, mpDisponible } from '../lib/mp'
 import { useDatos } from '../lib/store'
 import { ESTADOS_LEAD, ORIGENES, type Lead, type Pago } from '../lib/types'
 import { hoy, money, uid, waLink } from '../lib/format'
@@ -21,7 +22,22 @@ export function WhatsAppModal({ lead, open, onClose }: { lead: Lead; open: boole
   const exp = datos.experiencias.find((e) => e.id === lead.experienciaId)
   const pl = datos.ajustes.plantillas.find((p) => p.id === pid)
   const [texto, setTexto] = useState('')
-  const armado = pl ? rellenar(pl.texto, datos, exp, lead) : ''
+  const [link, setLink] = useState<{ url: string; monto: number; concepto: string } | null>(null)
+  const [generando, setGenerando] = useState(false)
+  const [errLink, setErrLink] = useState('')
+  const armado = pl ? rellenar(pl.texto, datos, exp, lead, link ? { link_pago: link.url } : {}) : ''
+  const generar = async () => {
+    setGenerando(true); setErrLink('')
+    try {
+      const l = await crearLinkPago(lead.id)
+      setLink(l)
+      if (!texto) setPid(datos.leads.find((x) => x.id === lead.id)?.pagos.length ? 'saldo' : 'reservar')
+      setTexto('')
+    } catch (e) {
+      setErrLink((e as Error).message)
+    }
+    setGenerando(false)
+  }
   const actual = texto || armado
   const [copiado, setCopiado] = useState(false)
   return (
@@ -38,6 +54,21 @@ export function WhatsAppModal({ lead, open, onClose }: { lead: Lead; open: boole
         ))}
       </div>
       {pl && <p className="mb-2 text-xs text-stone-500">Cuándo usarlo: {pl.cuando}</p>}
+      {mpDisponible(datos.ajustes) && exp && (
+        <div className="mb-3 rounded-xl bg-sky-50 p-3 text-sm">
+          {link ? (
+            <span className="text-sky-900">✅ Link de Mercado Pago por <b>{money(link.monto)}</b> ({link.concepto.toLowerCase()}) agregado al mensaje. Cuando pague, se registra solo.</span>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sky-900">Cobrale con Mercado Pago: el pago se registra solo.</span>
+              <Button size="sm" variant="secondary" onClick={generar} disabled={generando}>
+                <CreditCard size={16} /> {generando ? 'Creando…' : 'Crear link de pago'}
+              </Button>
+            </div>
+          )}
+          {errLink && <p className="mt-1 text-red-600">{errLink}</p>}
+        </div>
+      )}
       <Textarea rows={11} value={actual} onChange={(e) => setTexto(e.target.value)} />
       <div className="mt-3 flex flex-wrap justify-end gap-2">
         <Button

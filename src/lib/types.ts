@@ -84,6 +84,7 @@ export interface Ajustes {
   diasSaldo: number
   descuentoAmigo: number
   reglas: string
+  mpActivo: boolean // cobro automático con Mercado Pago (requiere modo nube + variables en el servidor)
   plantillas: Plantilla[]
 }
 

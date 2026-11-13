@@ -109,6 +109,7 @@ export const ajustesDefault = (): Ajustes => ({
   diasSaldo: 7,
   descuentoAmigo: 10,
   reglas: REGLAS_DEFAULT,
+  mpActivo: false,
   plantillas: PLANTILLAS_DEFAULT,
 })
 

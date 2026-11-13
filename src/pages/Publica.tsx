@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { CalendarDays, Check, Clock, MapPin, MessageCircle, Users } from 'lucide-react'
+import { CalendarDays, Check, Clock, CreditCard, MapPin, MessageCircle, Users } from 'lucide-react'
+import { mpDisponible, reservarOnline } from '../lib/mp'
 import { cargarPublico, crearConsultaPublica, type Publico as P } from '../lib/backend'
 import { precioExperiencia } from '../lib/calc'
 import { fechaLarga, money, waLink } from '../lib/format'
@@ -10,7 +11,8 @@ type ExpPub = P['experiencias'][number]
 export default function Publica() {
   const [d, setD] = useState<P | null>(null)
   const [err, setErr] = useState('')
-  const [form, setForm] = useState<ExpPub | null>(null)
+  const [form, setForm] = useState<{ exp: ExpPub; pagar: boolean } | null>(null)
+  const pago = new URLSearchParams(window.location.search).get('pago')
 
   useEffect(() => {
     cargarPublico().then(setD).catch((e) => setErr(String(e.message ?? e)))
@@ -41,6 +43,13 @@ export default function Publica() {
       </header>
 
       <main className="mx-auto -mt-8 max-w-5xl px-4 pb-16">
+        {pago && (
+          <div className={`mb-4 rounded-2xl p-4 shadow-sm ${pago === 'ok' ? 'bg-emerald-50 text-emerald-900' : pago === 'pendiente' ? 'bg-amber-50 text-amber-900' : 'bg-red-50 text-red-800'}`}>
+            {pago === 'ok' && <><b>¡Pago recibido! 🎉</b> Tu lugar quedó reservado. En breve te escribimos por WhatsApp con todos los detalles.</>}
+            {pago === 'pendiente' && <><b>Tu pago está pendiente.</b> Apenas Mercado Pago lo apruebe, tu lugar queda reservado automáticamente.</>}
+            {pago === 'error' && <><b>El pago no se completó.</b> Podés intentarlo de nuevo o escribirnos por WhatsApp.</>}
+          </div>
+        )}
         <h2 className="mb-4 rounded-2xl bg-white px-5 py-3 text-lg font-semibold shadow-sm">Próximas experiencias</h2>
         {exps.length === 0 && <p className="rounded-2xl bg-white p-6 text-center text-stone-500">Pronto anunciamos nuevas fechas. ¡Seguinos en Instagram!</p>}
         <div className="grid gap-5 md:grid-cols-2">
@@ -81,13 +90,18 @@ export default function Publica() {
                         {lleno ? 'Agotado' : `Quedan ${libres} lugares`}
                       </div>
                     </div>
+                    {mpDisponible(aj) && !lleno && (
+                      <Button className="mb-2 w-full bg-sky-600 hover:bg-sky-700" onClick={() => setForm({ exp: e, pagar: true })}>
+                        <CreditCard size={18} /> Reservar y pagar seña ({money(p.sena)})
+                      </Button>
+                    )}
                     <div className="flex flex-col gap-2 sm:flex-row">
                       {aj.whatsapp && (
                         <a className="flex-1" href={waLink(aj.whatsapp, `¡Hola! Quiero reservar para "${e.nombre}" el ${fechaLarga(e.fecha)} 🙌`)} target="_blank" rel="noreferrer">
                           <Button variant="whatsapp" className="w-full"><MessageCircle size={18} /> {lleno ? 'Lista de espera' : 'Reservar por WhatsApp'}</Button>
                         </a>
                       )}
-                      <Button variant="secondary" className="flex-1" onClick={() => setForm(e)}>Dejar mis datos</Button>
+                      <Button variant="secondary" className="flex-1" onClick={() => setForm({ exp: e, pagar: false })}>Dejar mis datos</Button>
                     </div>
                   </div>
                 </div>
@@ -101,16 +115,27 @@ export default function Publica() {
           <p className="mt-3 whitespace-pre-line text-sm text-stone-700">{reglas}</p>
         </details>
       </main>
-      {form && <FormConsulta exp={form} onClose={() => setForm(null)} />}
+      {form && <FormConsulta exp={form.exp} pagar={form.pagar} onClose={() => setForm(null)} />}
     </div>
   )
 }
 
-function FormConsulta({ exp, onClose }: { exp: ExpPub; onClose: () => void }) {
+function FormConsulta({ exp, pagar, onClose }: { exp: ExpPub; pagar: boolean; onClose: () => void }) {
   const [f, setF] = useState({ nombre: '', whatsapp: '', email: '', notas: '' })
   const [estado, setEstado] = useState<'form' | 'enviando' | 'ok' | 'error'>('form')
+  const [msg, setMsg] = useState('')
   const enviar = async () => {
     setEstado('enviando')
+    if (pagar) {
+      try {
+        const { url } = await reservarOnline({ nombre: f.nombre, whatsapp: f.whatsapp, email: f.email, experienciaId: exp.id })
+        window.location.href = url
+      } catch (e) {
+        setMsg((e as Error).message)
+        setEstado('error')
+      }
+      return
+    }
     try {
       await crearConsultaPublica({ ...f, experienciaId: exp.id })
       setEstado('ok')
@@ -130,10 +155,13 @@ function FormConsulta({ exp, onClose }: { exp: ExpPub; onClose: () => void }) {
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); enviar() }}>
           <Field label="Nombre y apellido"><Input required value={f.nombre} onChange={(e) => setF({ ...f, nombre: e.target.value })} /></Field>
           <Field label="WhatsApp" hint="Con código de área, ej: 11 2345 6789"><Input required inputMode="tel" value={f.whatsapp} onChange={(e) => setF({ ...f, whatsapp: e.target.value })} /></Field>
-          <Field label="Email (opcional)"><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
-          <Field label="¿Alguna pregunta?"><Textarea rows={2} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} /></Field>
-          {estado === 'error' && <p className="text-sm text-red-600">No se pudo enviar. Probá de nuevo o escribinos por WhatsApp.</p>}
-          <Button type="submit" className="w-full" disabled={estado === 'enviando'}>{estado === 'enviando' ? 'Enviando…' : 'Quiero que me contacten'}</Button>
+          <Field label={pagar ? 'Email (para el comprobante)' : 'Email (opcional)'}><Input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+          {!pagar && <Field label="¿Alguna pregunta?"><Textarea rows={2} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} /></Field>}
+          {estado === 'error' && <p className="text-sm text-red-600">{msg || 'No se pudo enviar. Probá de nuevo o escribinos por WhatsApp.'}</p>}
+          {pagar && <p className="text-xs text-stone-500">Te llevamos a Mercado Pago para pagar la seña. Cuando se aprueba, tu lugar queda reservado automáticamente.</p>}
+          <Button type="submit" className="w-full" disabled={estado === 'enviando'}>
+            {estado === 'enviando' ? (pagar ? 'Abriendo Mercado Pago…' : 'Enviando…') : pagar ? 'Ir a pagar' : 'Quiero que me contacten'}
+          </Button>
         </form>
       )}
     </Modal>

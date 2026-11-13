@@ -5,6 +5,7 @@ import { useDatos } from '../lib/store'
 import { resumenExperiencia, esConfirmado } from '../lib/calc'
 import { diasHasta, fechaCorta, fechaLarga, hoy, money, pct } from '../lib/format'
 import { ESTADOS_ABIERTOS, ESTADOS_LEAD, type Lead } from '../lib/types'
+import { mpDisponible } from '../lib/mp'
 import { Badge, Button, Card, CupoBar, Empty, PageHeader, Stat } from '../components/ui'
 import { LeadModal, WhatsAppModal, faltaDe, nuevoLead } from '../components/Leads'
 
@@ -41,7 +42,7 @@ export default function Dashboard() {
     if (r.faltanMin > 0 && d <= 14) alertas.push(`A “${e.nombre}” le faltan ${r.faltanMin} personas para el mínimo y es en ${d} días.`)
     const pend = e.checklist.filter((c) => !c.hecho && c.etapa !== 'Después' && c.etapa !== 'El día').length
     if (d <= 7 && pend > 0) alertas.push(`“${e.nombre}”: quedan ${pend} tareas del checklist antes del día.`)
-    if (e.estado === 'Abierta' && !e.linkPago) alertas.push(`“${e.nombre}” no tiene link de pago cargado.`)
+    if (e.estado === 'Abierta' && !e.linkPago && !mpDisponible(aj)) alertas.push(`“${e.nombre}” no tiene link de pago cargado.`)
   }
   if (!aj.whatsapp) alertas.push('Cargá el WhatsApp del negocio en Ajustes para que funcione la página pública.')
 

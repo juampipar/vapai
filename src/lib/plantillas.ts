@@ -3,7 +3,7 @@ import { faltaCobrar, precioExperiencia, resumenExperiencia } from './calc'
 import { fechaLarga, money, sumarDias } from './format'
 import type { Datos } from './types'
 
-export function rellenar(texto: string, datos: Datos, exp?: Experiencia, lead?: Lead) {
+export function rellenar(texto: string, datos: Datos, exp?: Experiencia, lead?: Lead, extra: Record<string, string> = {}) {
   const aj: Ajustes = datos.ajustes
   const v: Record<string, string> = {
     marca: aj.marca,
@@ -37,6 +37,7 @@ export function rellenar(texto: string, datos: Datos, exp?: Experiencia, lead?: 
     })
     if (lead) v.falta = money(faltaCobrar(lead, exp, aj.comision) || p.saldo)
   }
+  Object.assign(v, extra)
   v.reglas = aj.reglas.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m)
   return texto.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m)
 }

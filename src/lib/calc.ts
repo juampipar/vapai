@@ -1,22 +1,7 @@
 import type { Ajustes, Experiencia, Gasto, Lead } from './types'
-import { ESTADOS_CONFIRMADOS } from './types'
 
-export const suma = (xs: { monto: number }[]) => xs.reduce((a, x) => a + (Number(x.monto) || 0), 0)
-
-export function precioExperiencia(e: Experiencia, comision: number) {
-  const fijos = suma(e.costosFijos)
-  const variable = suma(e.costosVariables)
-  const min = Math.max(1, e.cupoMin || 1)
-  const divisor = 1 - e.margen - comision
-  const bruto = divisor > 0 ? (fijos / min + variable) / divisor : 0
-  const r = e.redondeo > 0 ? e.redondeo : 1
-  const sugerido = Math.ceil(bruto / r) * r
-  const precio = e.precio ?? sugerido
-  const neto = precio * (1 - comision) - variable
-  const equilibrio = neto > 0 ? Math.ceil(fijos / neto) : null
-  const sena = Math.round((precio * e.senaPct) / 100 / 100) * 100
-  return { fijos, variable, sugerido, precio, neto, equilibrio, sena, saldo: precio - sena }
-}
+export { suma, precioExperiencia, cobrado, precioLead, esConfirmado, montoACobrar } from './precio'
+import { suma, precioExperiencia, cobrado, precioLead, esConfirmado } from './precio'
 
 export function escenarios(e: Experiencia, comision: number) {
   const { fijos, variable, precio } = precioExperiencia(e, comision)
@@ -33,10 +18,6 @@ export function escenarios(e: Experiencia, comision: number) {
   return out
 }
 
-export const cobrado = (l: Lead) => suma(l.pagos)
-export const precioLead = (l: Lead, e: Experiencia | undefined, comision: number) =>
-  l.precio ?? (e ? precioExperiencia(e, comision).precio : 0)
-export const esConfirmado = (l: Lead) => ESTADOS_CONFIRMADOS.includes(l.estado)
 export const faltaCobrar = (l: Lead, e: Experiencia | undefined, comision: number) =>
   esConfirmado(l) ? Math.max(0, precioLead(l, e, comision) - cobrado(l)) : 0
 

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { Download, RotateCcw, Save, Upload } from 'lucide-react'
+import { Download, PlugZap, RotateCcw, Save, Upload } from 'lucide-react'
+import { estadoMP } from '../lib/mp'
 import { useDatos } from '../lib/store'
 import { modo } from '../lib/backend'
 import { datosDemo } from '../lib/seed'
@@ -12,6 +13,7 @@ export default function Ajustes() {
   const [a, setA] = useState<A>(datos.ajustes)
   const [ok, setOk] = useState(false)
   const file = useRef<HTMLInputElement>(null)
+  const [prueba, setPrueba] = useState<{ ok: boolean; cuenta?: string; error?: string; firma?: boolean } | 'probando' | null>(null)
   const set = <K extends keyof A>(k: K, v: A[K]) => setA((x) => ({ ...x, [k]: v }))
 
   const exportar = () => {
@@ -62,6 +64,34 @@ export default function Ajustes() {
             <Field label="El saldo se paga hasta (días antes)"><NumInput value={a.diasSaldo} onChange={(n) => set('diasSaldo', n)} /></Field>
             <Field label="Descuento por traer un amigo (%)"><NumInput value={a.descuentoAmigo} onChange={(n) => set('descuentoAmigo', n)} /></Field>
           </div>
+        </Card>
+        <Card title="Cobro automático con Mercado Pago">
+          {modo === 'local' ? (
+            <p className="text-sm text-stone-600">
+              Disponible cuando la app está online (Supabase + Vercel). Mientras tanto podés pegar un link de pago fijo en cada experiencia. Los pasos están en el README.
+            </p>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <p className="text-stone-600">
+                Con esto activado, la página pública muestra <b>“Reservar y pagar seña”</b>, y desde cada cliente podés crear un link de pago por la seña o el saldo.
+                Cuando Mercado Pago aprueba el pago, <b>se registra solo</b> en la ficha del cliente y cambia su estado.
+              </p>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={!!a.mpActivo} onChange={(e) => set('mpActivo', e.target.checked)} className="size-4 accent-teal-700" />
+                Activar cobro automático (después tocá <b>Guardar</b>)
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="secondary" size="sm" onClick={async () => { setPrueba('probando'); setPrueba(await estadoMP()) }} disabled={prueba === 'probando'}>
+                  <PlugZap size={16} /> {prueba === 'probando' ? 'Probando…' : 'Probar conexión'}
+                </Button>
+                {prueba && prueba !== 'probando' && (
+                  prueba.ok
+                    ? <span className="text-emerald-700">✅ Conectado a la cuenta {prueba.cuenta}{!prueba.firma && ' (sugerido: cargar también MP_WEBHOOK_SECRET)'}</span>
+                    : <span className="text-red-600">❌ {prueba.error}</span>
+                )}
+              </div>
+            </div>
+          )}
         </Card>
         <Card title="Reglas (cancelaciones, clima, fotos…)">
           <p className="-mt-2 mb-2 text-xs text-stone-500">Se mandan al reservar y aparecen en la página pública. Podés usar {'{sena_pct}'} y {'{dias_saldo}'}.</p>

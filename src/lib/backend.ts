@@ -10,7 +10,7 @@ export const supabase: SupabaseClient | null = URL && KEY ? createClient(URL, KE
 export const modo: 'nube' | 'local' = supabase ? 'nube' : 'local'
 
 export type Publico = {
-  ajustes: Pick<Ajustes, 'marca' | 'lema' | 'whatsapp' | 'instagram' | 'reglas' | 'senaPct' | 'diasSaldo' | 'comision' | 'descuentoAmigo'>
+  ajustes: Pick<Ajustes, 'marca' | 'lema' | 'whatsapp' | 'instagram' | 'reglas' | 'senaPct' | 'diasSaldo' | 'comision' | 'descuentoAmigo' | 'mpActivo'>
   experiencias: (Experiencia & { confirmados: number })[]
 }
 
